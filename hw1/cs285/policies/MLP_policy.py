@@ -143,12 +143,13 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             dict: 'Training Loss': supervised learning loss
         """
         # TODO: update the policy and return the loss
-        print(observations)
-        print(actions)
+        # print(f'before using forward, observation = {observations}')
         dist = self.forward(observations)
         loss = -dist.log_prob(actions).sum()
         self.optimizer.zero_grad()
         loss.backward()
+        self.optimizer.step()
+        print(f'loss = {loss}')
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
