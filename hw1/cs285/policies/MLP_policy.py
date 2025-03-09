@@ -116,7 +116,7 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         """
         torch.save(self.state_dict(), filepath)
 
-    def forward(self, observation: torch.FloatTensor) -> Any:
+    def forward(self, observation: torch.FloatTensor) -> torch.distributions.Normal:
         """
         Defines the forward pass of the network
 
@@ -129,7 +129,9 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         # through it. For example, you can return a torch.FloatTensor. You can also
         # return more flexible objects, such as a
         # `torch.distributions.Distribution` object. It's up to you!
-        raise NotImplementedError
+        mean = self.mean_net.forward(observation)
+        
+        return torch.distributions.Normal(mean, self.logstd.exp())
 
     def update(self, observations, actions):
         """
@@ -141,7 +143,12 @@ class MLPPolicySL(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             dict: 'Training Loss': supervised learning loss
         """
         # TODO: update the policy and return the loss
-        loss = TODO
+        print(observations)
+        print(actions)
+        dist = self.forward(observations)
+        loss = -dist.log_prob(actions).sum()
+        self.optimizer.zero_grad()
+        loss.backward()
         return {
             # You can add extra logging information here, but keep this line
             'Training Loss': ptu.to_numpy(loss),
