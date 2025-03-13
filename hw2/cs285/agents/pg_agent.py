@@ -178,6 +178,6 @@ class PGAgent(nn.Module):
         sum = 0
         res = []
         for reward, i in enumerate(reversed(rewards)):
-            sum += reward * self.gamma
+            sum = reward + sum * self.gamma
             res += sum
         return reversed(res)
