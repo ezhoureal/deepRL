@@ -60,7 +60,6 @@ class PGAgent(nn.Module):
         Each input is a list of NumPy arrays, where each array corresponds to a single trajectory. The batch size is the
         total number of samples across all trajectories (i.e. the sum of the lengths of all the arrays).
         """
-        print(f'reward shape = {rewards[0].shape}')
         # step 1: calculate Q values of each (s_t, a_t) point, using rewards (r_0, ..., r_t, ..., r_T)
         q_values: Sequence[np.ndarray] = self._calculate_q_vals(rewards)
 
@@ -72,6 +71,8 @@ class PGAgent(nn.Module):
         actions = np.concatenate(actions)
         rewards = np.concatenate(rewards)
         terminals = np.concatenate(terminals)
+        assert rewards.shape == actions.shape
+        print(f'reward shape = {rewards.shape}')
 
         # step 2: calculate advantages from Q values
         advantages: np.ndarray = self._estimate_advantage(
@@ -80,8 +81,7 @@ class PGAgent(nn.Module):
         print(f'shape of advantages = {advantages.shape}')
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         # TODO: update the PG actor/policy network once using the advantages
-        info: dict = None
-        self.actor.update(obs, actions, advantages)
+        info: dict = self.actor.update(obs, actions, advantages)
 
         # step 4: if needed, use all datapoints (s_t, a_t, q_t) to update the PG critic/baseline
         if self.critic is not None:
@@ -135,7 +135,7 @@ class PGAgent(nn.Module):
                 q_values_next = np.roll(q_values, -1)
                 q_values_next[-1] = 0
                 # TODO: if using a baseline, but not GAE, what are the advantages?
-                advantages = rewards + q_values_next * self.gamma - q_values
+                advantages = q_values - values
             else:
                 # TODO: implement GAE
                 batch_size = obs.shape[0]
@@ -174,7 +174,6 @@ class PGAgent(nn.Module):
         sum = 0
         for i, reward in enumerate(rewards):
             sum += reward * (self.gamma ** i)
-        print(f'sum of rewards = {sum}')
         return [sum] * rewards.__len__()
 
 
