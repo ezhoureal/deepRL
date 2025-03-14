@@ -106,8 +106,7 @@ class PGAgent(nn.Module):
             # Case 2: in reward-to-go PG, we only use the rewards after timestep t to estimate the Q-value for (s_t, a_t).
             # In other words: Q(s_t, a_t) = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
             # TODO: use the helper function self._discounted_reward_to_go to calculate the Q-values
-            q_values = [np.array(self._discounted_reward_to_go(rewards.tolist())) for reward in rewards]
-
+            q_values = [np.array(self._discounted_reward_to_go(reward.tolist())) for reward in rewards]
         return q_values
 
     def _estimate_advantage(
@@ -184,7 +183,8 @@ class PGAgent(nn.Module):
         """
         sum = 0
         res = []
-        for reward, i in enumerate(reversed(rewards)):
+        for i, reward in enumerate(reversed(rewards)):
             sum = reward + sum * self.gamma
-            res += sum
-        return reversed(res)
+            res.append(sum)
+        res.reverse()
+        return res
