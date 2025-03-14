@@ -127,8 +127,6 @@ class PGAgent(nn.Module):
             values = ptu.to_numpy(self.critic.forward(ptu.from_numpy(obs)))
 
             if self.gae_lambda is None:
-                q_values_next = np.roll(q_values, -1)
-                q_values_next[-1] = 0
                 # TODO: if using a baseline, but not GAE, what are the advantages?
                 advantages = q_values - values
             else:
