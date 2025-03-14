@@ -71,14 +71,11 @@ class PGAgent(nn.Module):
         actions = np.concatenate(actions)
         rewards = np.concatenate(rewards)
         terminals = np.concatenate(terminals)
-        assert rewards.shape == actions.shape
-        print(f'reward shape = {rewards.shape}')
 
         # step 2: calculate advantages from Q values
         advantages: np.ndarray = self._estimate_advantage(
             obs, rewards, q_values, terminals
         )
-        print(f'shape of advantages = {advantages.shape}')
         # step 3: use all datapoints (s_t, a_t, adv_t) to update the PG actor/policy
         # TODO: update the PG actor/policy network once using the advantages
         info: dict = self.actor.update(obs, actions, advantages)
@@ -88,7 +85,7 @@ class PGAgent(nn.Module):
             # TODO: perform `self.baseline_gradient_steps` updates to the critic/baseline network
             critic_info: dict = None
             for _ in range (self.baseline_gradient_steps):
-                self.critic.update(obs, q_values)
+                critic_info = self.critic.update(obs, q_values)
             info.update(critic_info)
 
         return info
@@ -127,8 +124,7 @@ class PGAgent(nn.Module):
             advantages = q_values
         else:
             # TODO: run the critic and use it as a baseline
-            values = self.critic.forward(obs)
-            assert values.shape == q_values.shape
+            values = ptu.to_numpy(self.critic.forward(ptu.from_numpy(obs)))
 
             if self.gae_lambda is None:
                 q_values_next = np.roll(q_values, -1)
