@@ -98,7 +98,6 @@ class MLPPolicyPG(MLPPolicy):
 
         # TODO: implement the policy gradient actor update.
         policy_action = self.forward(obs)
-        print(f'advantages shape = {advantages.shape}, action shape = {policy_action.log_prob(actions).shape}')
         loss = -torch.mean(policy_action.log_prob(actions).sum(dim=-1) * advantages)
 
         self.optimizer.zero_grad()
