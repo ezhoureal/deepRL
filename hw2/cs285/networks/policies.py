@@ -71,7 +71,8 @@ class MLPPolicy(nn.Module):
             return torch.distributions.Categorical(logits=self.logits_net.forward(obs))
         else:
             res = self.mean_net.forward(obs)
-            return torch.distributions.Normal(res, torch.exp(self.logstd))
+            std = torch.diag(torch.exp(self.logstd))
+            return torch.distributions.MultivariateNormal(res, scale_tril=std)
 
     def update(self, obs: np.ndarray, actions: np.ndarray, *args, **kwargs) -> dict:
         """Performs one iteration of gradient descent on the provided batch of data."""
@@ -88,13 +89,14 @@ class MLPPolicyPG(MLPPolicy):
         advantages: np.ndarray,
     ) -> dict:
         """Implements the policy gradient actor update."""
-        obs = ptu.from_numpy(obs)
-        actions = ptu.from_numpy(actions)
-        advantages = ptu.from_numpy(advantages)
+        obs: torch.Tensor = ptu.from_numpy(obs)
+        actions: torch.Tensor = ptu.from_numpy(actions)
+        advantages: torch.Tensor = ptu.from_numpy(advantages)
 
         # TODO: implement the policy gradient actor update.
-        policy_action = self.forward(obs)
-        loss = -torch.mean(policy_action.log_prob(actions).sum(dim=-1) * advantages)
+        log_pi: torch.Tensor = self.forward(obs).log_prob(actions)
+        assert log_pi.shape == advantages.shape
+        loss = -(log_pi * advantages).mean()
 
         self.optimizer.zero_grad()
         loss.backward()
