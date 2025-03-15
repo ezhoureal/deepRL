@@ -59,10 +59,7 @@ class MLPPolicy(nn.Module):
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         """Takes a single observation (as a numpy array) and returns a single action (as a numpy array)."""
         # TODO: implement get_action
-        if self.discrete:
-            return np.argmax(ptu.to_numpy(self.logits_net.forward(ptu.from_numpy(obs))))
-        else:
-            return ptu.to_numpy(self.mean_net.forward(ptu.from_numpy(obs)))
+        return ptu.to_numpy(self.forward(ptu.from_numpy(obs)).sample())
 
     def forward(self, obs: torch.FloatTensor):
         """
@@ -74,7 +71,6 @@ class MLPPolicy(nn.Module):
             return torch.distributions.Categorical(logits=self.logits_net.forward(obs))
         else:
             res = self.mean_net.forward(obs)
-            print(f'mean_net output = {res.shape}, logstd = {self.logstd}')
             return torch.distributions.Normal(res, torch.exp(self.logstd))
 
     def update(self, obs: np.ndarray, actions: np.ndarray, *args, **kwargs) -> dict:
