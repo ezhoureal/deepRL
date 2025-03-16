@@ -1,3 +1,4 @@
+import random
 from typing import Sequence, Callable, Tuple, Optional
 
 import torch
@@ -48,7 +49,10 @@ class DQNAgent(nn.Module):
         observation = ptu.from_numpy(np.asarray(observation))[None]
 
         # TODO(student): get the action from the critic using an epsilon-greedy strategy
-        action = ...
+        if random.random() < epsilon:
+            action = random.randint(0, self.num_actions)
+        else:
+            action = torch.argmax(self.critic.forward(observation))
 
         return ptu.to_numpy(action).squeeze(0).item()
 
@@ -62,25 +66,24 @@ class DQNAgent(nn.Module):
     ) -> dict:
         """Update the DQN critic, and return stats for logging."""
         (batch_size,) = reward.shape
-
+        print(f'reward shape = {reward.shape}, obs shape = {obs.shape}, action shape = {action.shape}, done shape = {done.shape}')
         # Compute target values
         with torch.no_grad():
             # TODO(student): compute target values
-            next_qa_values = ...
-
+            next_qa_values = self.critic.forward(next_obs)
+            print(f'next qa value shape = {next_qa_values.shape}')
             if self.use_double_q:
                 raise NotImplementedError
             else:
-                next_action = ...
+                next_action = torch.argmax(next_qa_values)
             
-            next_q_values = ...
-            target_values = ...
+            next_q_values = next_qa_values[next_action]
+            target_values = (1 - done) * next_q_values * self.discount + reward
 
         # TODO(student): train the critic with the target values
-        qa_values = ...
-        q_values = ... # Compute from the data actions; see torch.gather
-        loss = ...
-
+        qa_values = self.critic.forward(obs)
+        q_values = torch.gather(qa_values, 1, index=action) # Compute from the data actions; see torch.gather
+        loss = torch.nn.functional.mse_loss(q_values, target_values)
 
         self.critic_optimizer.zero_grad()
         loss.backward()
