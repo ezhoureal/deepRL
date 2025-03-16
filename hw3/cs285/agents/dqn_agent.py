@@ -69,7 +69,7 @@ class DQNAgent(nn.Module):
         # Compute target values
         with torch.no_grad():
             # TODO(student): compute target values
-            next_qa_values = self.critic.forward(next_obs)
+            next_qa_values = self.target_critic.forward(next_obs)
             if self.use_double_q:
                 raise NotImplementedError
             next_q_values, next_action = torch.max(next_qa_values, dim=1)
@@ -114,4 +114,6 @@ class DQNAgent(nn.Module):
         """
         # TODO(student): update the critic, and the target if needed
         critic_stats = self.update_critic(obs, action, reward, next_obs, done)
+        if step % self.target_update_period == 0:
+            self.update_target_critic()
         return critic_stats

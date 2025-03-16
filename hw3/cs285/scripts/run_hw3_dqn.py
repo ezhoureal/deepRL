@@ -102,13 +102,13 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         if isinstance(replay_buffer, MemoryEfficientReplayBuffer):
             # We're using the memory-efficient replay buffer,
             # so we only insert next_observation (not observation)
-            replay_buffer.insert(observation, action, reward, next_observation, done)
+            replay_buffer.insert(action, reward, next_observation[3], done and not truncated)
         else:
             # We're using the regular replay buffer
-            replay_buffer.insert(observation, action, reward, next_observation, done)
+            replay_buffer.insert(observation, action, reward, next_observation, done and not truncated)
 
         # Handle episode termination
-        if truncated or done:
+        if done:
             reset_env_training()
 
             logger.log_scalar(info["episode"]["r"], "train_return", step)
@@ -151,6 +151,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             logger.log_scalar(np.mean(ep_lens), "eval_ep_len", step)
             if step >= config["learning_starts"]:
                 print(f'return = {np.mean(returns)}')
+                print(f'critic loss = {update_info["critic_loss"]}')
             if len(returns) > 1:
                 logger.log_scalar(np.std(returns), "eval/return_std", step)
                 logger.log_scalar(np.max(returns), "eval/return_max", step)
