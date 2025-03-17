@@ -71,8 +71,12 @@ class DQNAgent(nn.Module):
             # TODO(student): compute target values
             next_qa_values = self.target_critic.forward(next_obs)
             if self.use_double_q:
-                raise NotImplementedError
-            next_q_values, next_action = torch.max(next_qa_values, dim=1)
+                next_action = torch.argmax(self.critic(next_obs), dim = 1)
+                assert next_action.shape == reward.shape
+                # use target critic for next_q_values
+                next_q_values = torch.gather(next_qa_values, 1, next_action.unsqueeze(1)).squeeze(-1)
+            else:
+                next_q_values, _ = torch.max(next_qa_values, dim=1)
             assert next_q_values.shape == reward.shape
             target_values = torch.where(done, reward, reward + next_q_values * self.discount)
 
