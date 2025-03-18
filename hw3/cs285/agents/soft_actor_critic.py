@@ -87,6 +87,7 @@ class SoftActorCritic(nn.Module):
         self.num_critic_networks = num_critic_networks
         self.use_entropy_bonus = use_entropy_bonus
         self.temperature = temperature
+        print(f'temperature = {self.temperature}')
         self.actor_gradient_type = actor_gradient_type
         self.num_actor_samples = num_actor_samples
         self.num_critic_updates = num_critic_updates
@@ -149,7 +150,7 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Implement the different backup strategies.
         if self.target_critic_backup_type == "doubleq":
-            next_qs[[0, 1]] = next_qs[[1, 0]]
+            next_qs = next_qs.flip(0)
         elif self.target_critic_backup_type == "min":
             next_qs = torch.min(next_qs, dim=0)
         elif self.target_critic_backup_type == "mean":
@@ -189,7 +190,7 @@ class SoftActorCritic(nn.Module):
             # TODO(student)
             # Sample from the actor
             next_action_distribution: torch.distributions.Distribution = self.actor.forward(next_obs)
-            next_action = next_action_distribution.sample((1,)).squeeze(0)
+            next_action = next_action_distribution.sample()
             # Compute the next Q-values for the sampled actions
             next_qs = self.target_critic(next_obs, next_action)
 
@@ -204,8 +205,9 @@ class SoftActorCritic(nn.Module):
 
             if self.use_entropy_bonus and self.backup_entropy:
                 # TODO(student): Add entropy bonus to the target values for SAC
-                next_action_entropy = self.entropy(next_action_distribution)
-                next_qs += next_action_entropy * self.temperature
+                next_action_entropy = self.entropy(next_action_distribution).unsqueeze(0)
+                assert next_action_entropy.shape == next_qs.shape, next_action_entropy.shape
+                next_qs -= next_action_entropy * self.temperature
 
             # Compute the target Q-value
             target_values: torch.Tensor = reward.reshape_as(next_qs)
@@ -240,7 +242,7 @@ class SoftActorCritic(nn.Module):
 
         # TODO(student): Compute the entropy of the action distribution.
         # Note: Think about whether to use .rsample() or .sample() here...
-        samples = action_distribution.rsample((self.num_actor_samples,))
+        samples = action_distribution.rsample()
         res = -action_distribution.log_prob(samples)
         return res
 
