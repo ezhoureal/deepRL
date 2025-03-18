@@ -107,7 +107,6 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                     logger.log_scalar(v, k, step)
                     logger.log_scalars
                 logger.flush()
-                # print(f'q_values = {update_info["q_values"]}, entropy = {update_info["entropy"]}')
 
 
         # Run evaluation

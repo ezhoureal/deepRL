@@ -206,9 +206,8 @@ class SoftActorCritic(nn.Module):
 
             if self.use_entropy_bonus and self.backup_entropy:
                 # TODO(student): Add entropy bonus to the target values for SAC
-                next_action_entropy = self.entropy(next_action_distribution).unsqueeze(0)
-                assert next_action_entropy.shape[1] == next_qs.shape[1], next_action_entropy.shape
-                next_qs -= next_action_entropy * self.temperature
+                next_action_entropy = torch.mean(self.entropy(next_action_distribution))
+                next_qs += next_action_entropy * self.temperature
 
             # Compute the target Q-value
             target_values: torch.Tensor = reward.expand_as(next_qs)
