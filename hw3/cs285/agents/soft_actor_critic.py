@@ -191,6 +191,7 @@ class SoftActorCritic(nn.Module):
             # Sample from the actor
             next_action_distribution: torch.distributions.Distribution = self.actor.forward(next_obs)
             next_action = next_action_distribution.sample()
+            assert next_action.shape[0] == next_obs.shape[0], next_action.shape
             # Compute the next Q-values for the sampled actions
             next_qs = self.target_critic(next_obs, next_action)
 
@@ -206,11 +207,12 @@ class SoftActorCritic(nn.Module):
             if self.use_entropy_bonus and self.backup_entropy:
                 # TODO(student): Add entropy bonus to the target values for SAC
                 next_action_entropy = self.entropy(next_action_distribution).unsqueeze(0)
-                assert next_action_entropy.shape == next_qs.shape, next_action_entropy.shape
+                assert next_action_entropy.shape[1] == next_qs.shape[1], next_action_entropy.shape
                 next_qs -= next_action_entropy * self.temperature
 
             # Compute the target Q-value
-            target_values: torch.Tensor = reward.reshape_as(next_qs)
+            target_values: torch.Tensor = reward.expand_as(next_qs)
+            assert target_values.is_contiguous()
             target_values = torch.where(done, target_values, target_values + next_qs * self.discount)
             assert target_values.shape == (
                 self.num_critic_networks,
@@ -276,9 +278,9 @@ class SoftActorCritic(nn.Module):
         # TODO(student)
         log_probs = action_distribution.log_prob(action)
         assert log_probs.shape == advantage.shape
-        loss = -log_probs * advantage
+        loss = -torch.mean(log_probs * advantage)
 
-        return loss.mean(), torch.mean(self.entropy(action_distribution))
+        return loss, torch.mean(self.entropy(action_distribution))
 
     def actor_loss_reparametrize(self, obs: torch.Tensor):
         batch_size = obs.shape[0]
