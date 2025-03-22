@@ -152,7 +152,7 @@ class SoftActorCritic(nn.Module):
         if self.target_critic_backup_type == "doubleq":
             next_qs = next_qs.flip(0)
         elif self.target_critic_backup_type == "min":
-            next_qs = torch.min(next_qs, dim=0)
+            next_qs, _ = torch.min(next_qs, dim=0)
         elif self.target_critic_backup_type == "mean":
             next_qs = torch.mean(next_qs, dim=0)
         else:
@@ -210,9 +210,9 @@ class SoftActorCritic(nn.Module):
                 next_qs += next_action_entropy * self.temperature
 
             # Compute the target Q-value
-            target_values: torch.Tensor = reward.expand_as(next_qs)
-            assert target_values.is_contiguous()
-            target_values = torch.where(done, target_values, target_values + next_qs * self.discount)
+            target_values: torch.Tensor = reward.expand_as(next_qs).contiguous()
+            # assert target_values.is_contiguous()
+            target_values = target_values + (done - 1) * next_qs * self.discount
             assert target_values.shape == (
                 self.num_critic_networks,
                 batch_size

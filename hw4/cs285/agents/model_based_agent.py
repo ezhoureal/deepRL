@@ -231,9 +231,26 @@ class ModelBasedAgent(nn.Module):
         elif self.mpc_strategy == "cem":
             elite_mean, elite_std = None, None
             for i in range(self.cem_num_iters):
-                ...
+                rewards = self.evaluate_action_sequences(obs, action_sequences)
+                elites = np.argsort(rewards)[-self.cem_num_elites:]
+                assert elites.shape == (self.cem_num_elites,)
+                new_elite_actions = action_sequences[elites]
+                if i == 0:
+                    # others = np.argsort(rewards)[:-self.cem_num_elites]
+                    elite_mean = np.mean(action_sequences, axis=0)
+                    elite_std = np.std(action_sequences, axis=0)
+                    assert elite_mean.shape == (self.mpc_horizon, self.ac_dim)
+
+                new_mean = np.mean(new_elite_actions, axis=0)
+                new_std = np.std(new_elite_actions, axis=0)
+                elite_mean = elite_mean * (1 - self.cem_alpha) + self.cem_alpha * new_mean
+                elite_std = elite_std * (1 - self.cem_alpha) + self.cem_alpha * new_std
+                new_sample = np.random.normal(elite_mean, elite_std, action_sequences.shape)
+                assert new_sample.shape == action_sequences.shape
+                action_sequences = new_sample
                 # TODO(student): implement the CEM algorithm
                 # HINT: you need a special case for i == 0 to initialize
                 # the elite mean and std
+            return elite_mean[0]
         else:
             raise ValueError(f"Invalid MPC strategy '{self.mpc_strategy}'")
