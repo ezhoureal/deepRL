@@ -134,7 +134,7 @@ def run_training_loop(
             trajs, envsteps_this_batch = utils.sample_trajectories(env, policy, config["initial_batch_size"], config["ep_len"])
         else:
             # TODO(student): collect at least config["batch_size"] transitions with our `actor_agent`
-            trajs, envsteps_this_batch = utils.sample_n_trajectories(env, actor_agent, config["batch_size"], config["ep_len"])
+            trajs, envsteps_this_batch = utils.sample_trajectories(env, actor_agent, config["batch_size"], config["ep_len"])
 
         total_envsteps += envsteps_this_batch
         logger.log_scalar(total_envsteps, "total_envsteps", itr)
