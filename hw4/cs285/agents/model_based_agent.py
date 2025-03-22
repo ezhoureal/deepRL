@@ -89,9 +89,9 @@ class ModelBasedAgent(nn.Module):
         # directly
         # HINT 3: make sure to avoid any risk of dividing by zero when
         # normalizing vectors by adding a small number to the denominator!
-        norm_diff = (next_obs - obs - self.obs_delta_mean) / (self.obs_delta_std + 1e-12)
+        norm_diff = (next_obs - obs - self.obs_delta_mean) / (self.obs_delta_std + 1e-6)
         ob_acs = torch.cat([obs, acs], dim=1)
-        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
+        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-6)
         loss = torch.nn.functional.mse_loss(self.dynamics_models[i].forward(ob_acs), norm_diff)
 
         self.optimizer.zero_grad()
@@ -139,9 +139,9 @@ class ModelBasedAgent(nn.Module):
         # Same hints as `update` above, avoid nasty divide-by-zero errors when
         # normalizing inputs!
         ob_acs = torch.cat([obs, acs], dim=1)
-        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
+        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-6)
         delta = self.dynamics_models[i].forward(ob_acs)
-        delta = delta * (self.obs_delta_std + 1e-12) + self.obs_delta_mean
+        delta = delta * (self.obs_delta_std + 1e-6) + self.obs_delta_mean
         assert delta.shape == obs.shape, delta.shape
         return ptu.to_numpy(obs + delta)
 
