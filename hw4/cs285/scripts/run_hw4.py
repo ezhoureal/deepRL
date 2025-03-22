@@ -22,6 +22,7 @@ import tqdm
 from cs285.infrastructure import utils
 from cs285.infrastructure.logger import Logger
 
+from cs285.infrastructure.utils import RandomPolicy
 from scripting_utils import make_logger, make_config
 
 import argparse
@@ -44,6 +45,15 @@ def collect_mbpo_rollout(
         # HINT: get actions from `sac_agent` and `next_ob` predictions from `mb_agent`.
         # Average the ensemble predictions directly to get the next observation.
         # Get the reward using `env.get_reward`.
+        # ac = sac_agent.get_action(ob)
+
+        # predictions = np.ndarray()
+        # for i in range(mb_agent.ensemble_size):
+        #     predictions.append(mb_agent.get_dynamics_predictions(i, ob, ac))
+
+        # assert predictions.shape == (mb_agent.ensemble_size, mb_agent.ob_dim)
+        # next_ob = predictions.mean()
+        # rew = env.get_reward(next_ob)
 
         obs.append(ob)
         acs.append(ac)
@@ -119,10 +129,12 @@ def run_training_loop(
         if itr == 0:
             # TODO(student): collect at least config["initial_batch_size"] transitions with a random policy
             # HINT: Use `utils.RandomPolicy` and `utils.sample_trajectories`
-            trajs, envsteps_this_batch = ...
+            policy = RandomPolicy(env)
+            print(f'random sampling ${config["initial_batch_size"]}, epLen = {config["ep_len"]}')
+            trajs, envsteps_this_batch = utils.sample_trajectories(env, policy, config["initial_batch_size"], config["ep_len"])
         else:
             # TODO(student): collect at least config["batch_size"] transitions with our `actor_agent`
-            trajs, envsteps_this_batch = ...
+            trajs, envsteps_this_batch = utils.sample_n_trajectories(env, actor_agent, config["batch_size"], config["ep_len"])
 
         total_envsteps += envsteps_this_batch
         logger.log_scalar(total_envsteps, "total_envsteps", itr)
@@ -165,6 +177,10 @@ def run_training_loop(
             # TODO(student): train the dynamics models
             # HINT: train each dynamics model in the ensemble with a *different* batch of transitions!
             # Use `replay_buffer.sample` with config["train_batch_size"].
+            for i in range(mb_agent.ensemble_size):
+                sample = replay_buffer.sample(config["train_batch_size"])
+                loss = mb_agent.update(i, sample["observations"], sample["actions"], sample["next_observations"])
+                step_losses.append(loss)
             all_losses.append(np.mean(step_losses))
 
         # on iteration 0, plot the full learning curve

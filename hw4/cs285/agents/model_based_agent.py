@@ -69,7 +69,7 @@ class ModelBasedAgent(nn.Module):
             "obs_delta_std", torch.ones(self.ob_dim, device=ptu.device)
         )
 
-    def update(self, i: int, obs: np.ndarray, acs: np.ndarray, next_obs: np.ndarray):
+    def update(self, i: int, obs: np.ndarray, acs: np.ndarray, next_obs: np.ndarray) -> np.ndarray:
         """
         Update self.dynamics_models[i] using the given batch of data.
 
@@ -89,7 +89,10 @@ class ModelBasedAgent(nn.Module):
         # directly
         # HINT 3: make sure to avoid any risk of dividing by zero when
         # normalizing vectors by adding a small number to the denominator!
-        loss = ...
+        norm_diff = (next_obs - obs - self.obs_delta_mean) / (self.obs_delta_std + 1e-12)
+        ob_acs = torch.cat([obs, acs], dim=1)
+        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
+        loss = torch.nn.functional.mse_loss(self.dynamics_models[i].forward(ob_acs), norm_diff)
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -111,10 +114,10 @@ class ModelBasedAgent(nn.Module):
         acs = ptu.from_numpy(acs)
         next_obs = ptu.from_numpy(next_obs)
         # TODO(student): update the statistics
-        self.obs_acs_mean = ...
-        self.obs_acs_std = ...
-        self.obs_delta_mean = ...
-        self.obs_delta_std = ...
+        self.obs_acs_mean = torch.mean(torch.cat([obs, acs], dim=1), dim=0)
+        self.obs_acs_std = torch.std(torch.cat([obs, acs], dim=1), dim=0)
+        self.obs_delta_mean = torch.mean(next_obs - obs, dim=0)
+        self.obs_delta_std = torch.std(next_obs - obs, dim=0)
 
     @torch.no_grad()
     def get_dynamics_predictions(
@@ -135,7 +138,12 @@ class ModelBasedAgent(nn.Module):
         # HINT: make sure to *unnormalize* the NN outputs (observation deltas)
         # Same hints as `update` above, avoid nasty divide-by-zero errors when
         # normalizing inputs!
-        return ptu.to_numpy(pred_next_obs)
+        # ob_acs = torch.cat([obs, acs], dim=1)
+        # ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
+        # delta = obs + self.dynamics_models[i].forward(ob_acs)
+        # delta = delta * (self.obs_delta_std + 1e-12) + self.obs_delta_mean
+        # assert delta.shape == obs.shape, delta.shape
+        return ptu.to_numpy(obs + delta)
 
     def evaluate_action_sequences(self, obs: np.ndarray, action_sequences: np.ndarray):
         """
@@ -216,6 +224,7 @@ class ModelBasedAgent(nn.Module):
         elif self.mpc_strategy == "cem":
             elite_mean, elite_std = None, None
             for i in range(self.cem_num_iters):
+                ...
                 # TODO(student): implement the CEM algorithm
                 # HINT: you need a special case for i == 0 to initialize
                 # the elite mean and std
