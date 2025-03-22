@@ -138,11 +138,11 @@ class ModelBasedAgent(nn.Module):
         # HINT: make sure to *unnormalize* the NN outputs (observation deltas)
         # Same hints as `update` above, avoid nasty divide-by-zero errors when
         # normalizing inputs!
-        # ob_acs = torch.cat([obs, acs], dim=1)
-        # ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
-        # delta = obs + self.dynamics_models[i].forward(ob_acs)
-        # delta = delta * (self.obs_delta_std + 1e-12) + self.obs_delta_mean
-        # assert delta.shape == obs.shape, delta.shape
+        ob_acs = torch.cat([obs, acs], dim=1)
+        ob_acs = (ob_acs - self.obs_acs_mean) / (self.obs_acs_std + 1e-12)
+        delta = self.dynamics_models[i].forward(ob_acs)
+        delta = delta * (self.obs_delta_std + 1e-12) + self.obs_delta_mean
+        assert delta.shape == obs.shape, delta.shape
         return ptu.to_numpy(obs + delta)
 
     def evaluate_action_sequences(self, obs: np.ndarray, action_sequences: np.ndarray):
@@ -164,12 +164,14 @@ class ModelBasedAgent(nn.Module):
         sum_of_rewards = np.zeros(
             (self.ensemble_size, self.mpc_num_action_sequences), dtype=np.float32
         )
+        assert obs.shape == (self.ob_dim,), obs.shape
         # We need to repeat our starting obs for each of the rollouts.
         obs = np.tile(obs, (self.ensemble_size, self.mpc_num_action_sequences, 1))
 
         # TODO(student): for each batch of actions in in the horizon...
-        for acs in ...:
-            assert acs.shape == (self.mpc_num_action_sequences, self.ac_dim)
+        action_sequences = action_sequences.swapaxes(0, 1)
+        for acs in action_sequences:
+            assert acs.shape == (self.mpc_num_action_sequences, self.ac_dim), acs.shape
             assert obs.shape == (
                 self.ensemble_size,
                 self.mpc_num_action_sequences,
@@ -178,7 +180,7 @@ class ModelBasedAgent(nn.Module):
 
             # TODO(student): predict the next_obs for each rollout
             # HINT: use self.get_dynamics_predictions
-            next_obs = ...
+            next_obs = np.stack([self.get_dynamics_predictions(i, obs[i], acs) for i in range(self.ensemble_size)])
             assert next_obs.shape == (
                 self.ensemble_size,
                 self.mpc_num_action_sequences,
@@ -191,8 +193,13 @@ class ModelBasedAgent(nn.Module):
             # respectively, and returns a tuple of `(rewards, dones)`. You can 
             # ignore `dones`. You might want to do some reshaping to make
             # `next_obs` and `acs` 2-dimensional.
-            rewards = ...
-            assert rewards.shape == (self.ensemble_size, self.mpc_num_action_sequences)
+            all_obs = np.concatenate(next_obs, axis=0)
+            assert all_obs.shape == (self.ensemble_size * self.mpc_num_action_sequences, self.ob_dim), all_obs.shape
+            acs_repeat = np.repeat(acs, self.ensemble_size, axis=0)
+            assert acs_repeat.shape[:1] == all_obs.shape[:1]
+            rewards, _ = self.env.get_reward(all_obs, acs_repeat)
+            rewards = np.reshape(rewards, (self.ensemble_size, self.mpc_num_action_sequences))
+            assert rewards.shape == (self.ensemble_size, self.mpc_num_action_sequences), rewards.shape
 
             sum_of_rewards += rewards
 
