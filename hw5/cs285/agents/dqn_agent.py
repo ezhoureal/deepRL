@@ -115,7 +115,7 @@ class DQNAgent(nn.Module):
     ) -> dict:
         """Update the DQN critic, and return stats for logging."""
         # Compute target values
-        loss, _, _ = self.compute_critic_loss(obs, action, reward, next_obs, done)
+        loss, metrics, _ = self.compute_critic_loss(obs, action, reward, next_obs, done)
 
         self.critic_optimizer.zero_grad()
         loss.backward()
@@ -128,8 +128,8 @@ class DQNAgent(nn.Module):
 
         return {
             "critic_loss": loss.item(),
-            "q_values": q_values.mean().item(),
-            "target_values": target_values.mean().item(),
+            "q_values": metrics["q_values"],
+            "target_values": metrics["target_values"],
             "grad_norm": grad_norm.item(),
         }
 
