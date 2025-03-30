@@ -74,20 +74,23 @@ class DQNAgent(nn.Module):
         """
 
         # TODO(student): paste in your code from HW3, and make sure the return values exist
-        raise NotImplementedError
         with torch.no_grad():
-            next_qa_values = ...
-
+            # TODO(student): compute target values
+            next_qa_values = self.target_critic.forward(next_obs)
             if self.use_double_q:
-                next_action = ...
+                next_action = torch.argmax(self.critic(next_obs), dim = 1)
+                assert next_action.shape == reward.shape
+                # use target critic for next_q_values
+                next_q_values = torch.gather(next_qa_values, 1, next_action.unsqueeze(1)).squeeze(-1)
             else:
-                next_action = ...
+                next_q_values, _ = torch.max(next_qa_values, dim=1)
+            assert next_q_values.shape == reward.shape
+            target_values = torch.where(done, reward, reward + next_q_values * self.discount)
 
-            next_q_values = ...
-            assert next_q_values.shape == (batch_size,), next_q_values.shape
-
-            target_values = ...
-            assert target_values.shape == (batch_size,), target_values.shape
+        # TODO(student): train the critic with the target values
+        qa_values = self.critic.forward(obs)
+        q_values = torch.gather(qa_values, 1, index=action.unsqueeze(1)).squeeze(-1) # Compute from the data actions; see torch.gather
+        loss = self.critic_loss(q_values, target_values)
 
         return (
             loss,
@@ -111,25 +114,8 @@ class DQNAgent(nn.Module):
         done: torch.Tensor,
     ) -> dict:
         """Update the DQN critic, and return stats for logging."""
-        (batch_size,) = reward.shape
         # Compute target values
-        with torch.no_grad():
-            # TODO(student): compute target values
-            next_qa_values = self.target_critic.forward(next_obs)
-            if self.use_double_q:
-                next_action = torch.argmax(self.critic(next_obs), dim = 1)
-                assert next_action.shape == reward.shape
-                # use target critic for next_q_values
-                next_q_values = torch.gather(next_qa_values, 1, next_action.unsqueeze(1)).squeeze(-1)
-            else:
-                next_q_values, _ = torch.max(next_qa_values, dim=1)
-            assert next_q_values.shape == reward.shape
-            target_values = torch.where(done, reward, reward + next_q_values * self.discount)
-
-        # TODO(student): train the critic with the target values
-        qa_values = self.critic.forward(obs)
-        q_values = torch.gather(qa_values, 1, index=action.unsqueeze(1)).squeeze(-1) # Compute from the data actions; see torch.gather
-        loss = self.critic_loss(q_values, target_values)
+        loss, _, _ = self.compute_critic_loss(obs, action, reward, next_obs, done)
 
         self.critic_optimizer.zero_grad()
         loss.backward()
