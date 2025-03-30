@@ -41,7 +41,7 @@ class DQNAgent(nn.Module):
 
         self.update_target_critic()
 
-    def get_action(self, observation: np.ndarray, epsilon: float = 0.02) -> int:
+    def get_action(self, observation: np.ndarray, epsilon: float = 0.0) -> int:
         """
         Used for evaluation.
         """
@@ -55,6 +55,52 @@ class DQNAgent(nn.Module):
             action = torch.argmax(q_values)
 
         return ptu.to_numpy(action).squeeze(0).item()
+
+    def compute_critic_loss(
+        self,
+        obs: torch.Tensor,
+        action: torch.Tensor,
+        reward: torch.Tensor,
+        next_obs: torch.Tensor,
+        done: torch.Tensor,
+    ) -> Tuple[torch.Tensor, dict, dict]:
+        """
+        Compute the loss for the DQN critic.
+
+        Returns:
+         - loss: torch.Tensor, the MSE loss for the critic
+         - metrics: dict, a dictionary of metrics to log
+         - variables: dict, a dictionary of variables that can be used in subsequent calculations
+        """
+
+        # TODO(student): paste in your code from HW3, and make sure the return values exist
+        raise NotImplementedError
+        with torch.no_grad():
+            next_qa_values = ...
+
+            if self.use_double_q:
+                next_action = ...
+            else:
+                next_action = ...
+
+            next_q_values = ...
+            assert next_q_values.shape == (batch_size,), next_q_values.shape
+
+            target_values = ...
+            assert target_values.shape == (batch_size,), target_values.shape
+
+        return (
+            loss,
+            {
+                "critic_loss": loss.item(),
+                "q_values": q_values.mean().item(),
+                "target_values": target_values.mean().item(),
+            },
+            {
+                "qa_values": qa_values,
+                "q_values": q_values,
+            },
+        )
 
     def update_critic(
         self,
