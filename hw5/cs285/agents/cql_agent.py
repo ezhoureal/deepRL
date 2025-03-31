@@ -44,7 +44,7 @@ class CQLAgent(DQNAgent):
         # Hint: `variables` includes qa_values and q_values from your CQL implementation
         qs = variables["q_values"]
         qa = variables["qa_values"]
-        qa_sum = torch.log(torch.sum(torch.exp(qa), dim=1))
+        qa_sum = torch.logsumexp(qa, dim=1)
         assert qa_sum.shape == qs.shape, qa_sum.shape
         regularizer = torch.mean(qa_sum - qs)
         assert regularizer.shape == torch.Size([]), regularizer.shape
