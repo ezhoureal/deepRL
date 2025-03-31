@@ -66,7 +66,7 @@ class RNDAgent(DQNAgent):
         with torch.no_grad():
             # TODO(student): Compute RND bonus for batch and modify rewards
             rnd_error = (self.rnd_net(next_observations) - self.rnd_target_net(next_observations)) ** 2
-            rnd_error = torch.sum(rnd_error, dim=1)
+            rnd_error = torch.sqrt(torch.sum(rnd_error, dim=1))
             assert rnd_error.shape == rewards.shape, rnd_error.shape
             rewards = rewards + self.rnd_weight * rnd_error
 
