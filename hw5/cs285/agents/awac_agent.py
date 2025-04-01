@@ -86,8 +86,10 @@ class AWACAgent(DQNAgent):
         # TODO(student): update the actor using AWAC
         dist : torch.distributions.Categorical = self.actor(observations)
         with torch.no_grad():
-            advantages = self.compute_advantage(observations, actions, dist)
-        loss = -torch.mean(dist.log_prob(actions) * torch.exp(advantages / self.temperature))
+            advantages = self.compute_advantage(observations, actions, dist).squeeze()
+        log_probs = dist.log_prob(actions)
+        assert log_probs.shape == advantages.shape, log_probs.shape
+        loss = -torch.mean(log_probs * torch.exp(advantages / self.temperature))
 
         self.actor_optimizer.zero_grad()
         loss.backward()

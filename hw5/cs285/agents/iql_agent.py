@@ -40,8 +40,10 @@ class IQLAgent(AWACAgent):
     ):
         # TODO(student): Compute advantage with IQL
         qa_values = self.critic(observations)
-        q_values = torch.gather(qa_values, 1, index=actions.unsqueeze(1)).squeeze(-1)
-        return q_values - self.value_critic(observations)
+        q_values = torch.gather(qa_values, 1, index=actions.unsqueeze(1))
+        v = self.value_critic(observations)
+        assert v.shape == q_values.shape, v.shape
+        return q_values - v
 
     def update_q(
         self,
@@ -88,8 +90,10 @@ class IQLAgent(AWACAgent):
         Compute the expectile loss for IQL
         """
         # TODO(student): Compute the expectile loss
+        assert target_qs.shape == vs.shape
         diff = target_qs - vs
         mult = torch.where(diff < 0, expectile, 1 - expectile)
+        assert mult.shape == diff.shape
         return torch.mean(mult * (diff ** 2))
 
     def update_v(
