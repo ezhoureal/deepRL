@@ -30,6 +30,7 @@ class IQLAgent(AWACAgent):
             self.value_critic.parameters()
         )
         self.expectile = expectile
+        print(f'expectile = {self.expectile}')
 
     def compute_advantage(
         self,
@@ -55,8 +56,7 @@ class IQLAgent(AWACAgent):
         """
         # TODO(student): Update Q(s, a) to match targets (based on V)
         q_values = torch.gather(self.critic(observations), 1, actions.unsqueeze(-1)).squeeze(-1)
-        next_v = self.target_value_critic(next_observations) * self.discount
-        next_v = next_v.squeeze(-1)
+        next_v = self.target_value_critic(next_observations).squeeze(-1) * self.discount
         assert q_values.shape == rewards.shape
         assert next_v.shape == rewards.shape, next_v.shape
 
@@ -88,7 +88,7 @@ class IQLAgent(AWACAgent):
         """
         # TODO(student): Compute the expectile loss
         diff = target_qs - vs
-        mult = torch.where(diff > 0, expectile, 1 - expectile)
+        mult = torch.where(diff < 0, expectile, 1 - expectile)
         return mult * (diff ** 2)
 
     def update_v(
