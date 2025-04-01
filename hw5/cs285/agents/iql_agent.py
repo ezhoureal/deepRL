@@ -56,12 +56,13 @@ class IQLAgent(AWACAgent):
         """
         # TODO(student): Update Q(s, a) to match targets (based on V)
         q_values = torch.gather(self.critic(observations), 1, actions.unsqueeze(-1)).squeeze(-1)
-        next_v = self.target_value_critic(next_observations).squeeze(-1) * self.discount
         assert q_values.shape == rewards.shape
-        assert next_v.shape == rewards.shape, next_v.shape
+        with torch.no_grad():
+            next_v = self.target_value_critic(next_observations).detach().squeeze(-1) * self.discount
+            assert next_v.shape == rewards.shape, next_v.shape
+            target_values = torch.where(dones, rewards, rewards + next_v)
 
-        target_values = torch.where(dones, rewards, rewards + next_v)
-        loss = self.critic_loss(q_values, rewards + target_values)
+        loss = self.critic_loss(q_values, target_values)
 
         self.critic_optimizer.zero_grad()
         loss.backward()
@@ -89,7 +90,7 @@ class IQLAgent(AWACAgent):
         # TODO(student): Compute the expectile loss
         diff = target_qs - vs
         mult = torch.where(diff < 0, expectile, 1 - expectile)
-        return mult * (diff ** 2)
+        return torch.mean(mult * (diff ** 2))
 
     def update_v(
         self,
@@ -101,11 +102,11 @@ class IQLAgent(AWACAgent):
         """
         # TODO(student): Compute target values for V(s)
         vs = self.value_critic(observations)
-        target_values = torch.gather(self.target_critic(observations), 1, actions.unsqueeze(-1))
-        assert target_values.shape == vs.shape, vs.shape
+        with torch.no_grad():
+            target_values = torch.gather(self.target_critic(observations), 1, actions.unsqueeze(-1))
+            assert target_values.shape == vs.shape, vs.shape
         # TODO(student): Update V(s) using the loss from the IQL paper
         loss = IQLAgent.iql_expectile_loss(self.expectile, vs, target_values)
-        loss = torch.mean(loss.squeeze(-1), dim=0)
 
         self.value_critic_optimizer.zero_grad()
         loss.backward()

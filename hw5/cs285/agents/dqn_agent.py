@@ -51,7 +51,7 @@ class DQNAgent(nn.Module):
         if torch.rand(1) < epsilon:
             action = torch.randint(0, self.num_actions, (1,))
         else:
-            q_values = self.critic.forward(observation)
+            q_values = self.critic.forward(observation).detach()
             action = torch.argmax(q_values)
 
         return ptu.to_numpy(action).squeeze(0).item()
