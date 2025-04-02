@@ -69,7 +69,7 @@ class AWACAgent(DQNAgent):
         action_dist: Optional[torch.distributions.Categorical] = None,
     ):
         # TODO(student): compute the advantage of the actions compared to E[Q(s, a)]
-        qa_values = self.critic(observations)
+        qa_values = self.target_critic(observations)
         q_values = torch.gather(qa_values, 1, index=actions.unsqueeze(1)).squeeze(-1)
         assert q_values.shape == actions.shape
         values = torch.sum(action_dist.probs * qa_values, dim=1)  # E[Q(s, a)] = sum_a pi(a|s) Q(s, a)
