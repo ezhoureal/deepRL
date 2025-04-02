@@ -39,7 +39,7 @@ class IQLAgent(AWACAgent):
         action_dist: Optional[torch.distributions.Categorical] = None,
     ):
         # TODO(student): Compute advantage with IQL
-        qa_values = self.target_critic(observations)
+        qa_values = self.critic(observations)
         q_values = torch.gather(qa_values, 1, index=actions.unsqueeze(1))
         v = self.value_critic(observations)
         assert v.shape == q_values.shape, v.shape
@@ -93,7 +93,9 @@ class IQLAgent(AWACAgent):
         # TODO(student): Compute the expectile loss
         assert target_qs.shape == vs.shape
         diff = target_qs - vs
-        return torch.mean(torch.abs(expectile - (diff < 0).float()) * diff**2)
+        mult = torch.where(diff > 0, expectile, 1 - expectile)
+        assert mult.shape == diff.shape
+        return torch.mean(mult * diff**2)
 
     def update_v(
         self,
