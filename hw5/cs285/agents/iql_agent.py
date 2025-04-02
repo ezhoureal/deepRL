@@ -30,7 +30,7 @@ class IQLAgent(AWACAgent):
             self.value_critic.parameters()
         )
         self.expectile = expectile
-        print(f'expectile = {self.expectile}')
+        print(f'expectile = {self.expectile}, temperature = {self.temperature}')
 
     def compute_advantage(
         self,
@@ -39,7 +39,7 @@ class IQLAgent(AWACAgent):
         action_dist: Optional[torch.distributions.Categorical] = None,
     ):
         # TODO(student): Compute advantage with IQL
-        qa_values = self.critic(observations)
+        qa_values = self.target_critic(observations)
         q_values = torch.gather(qa_values, 1, index=actions.unsqueeze(1))
         v = self.value_critic(observations)
         assert v.shape == q_values.shape, v.shape
@@ -60,10 +60,11 @@ class IQLAgent(AWACAgent):
         q_values = torch.gather(self.critic(observations), 1, actions.unsqueeze(-1)).squeeze(-1)
         assert q_values.shape == rewards.shape
         with torch.no_grad():
-            next_v = self.target_value_critic(next_observations).detach().squeeze(-1) * self.discount
+            next_v = self.target_value_critic(next_observations).squeeze(-1) * self.discount
             assert next_v.shape == rewards.shape, next_v.shape
             target_values = torch.where(dones, rewards, rewards + next_v)
 
+        assert target_values.shape == q_values.shape
         loss = self.critic_loss(q_values, target_values)
 
         self.critic_optimizer.zero_grad()
@@ -92,9 +93,7 @@ class IQLAgent(AWACAgent):
         # TODO(student): Compute the expectile loss
         assert target_qs.shape == vs.shape
         diff = target_qs - vs
-        mult = torch.where(diff < 0, expectile, 1 - expectile)
-        assert mult.shape == diff.shape
-        return torch.mean(mult * (diff ** 2))
+        return torch.mean(torch.abs(expectile - (diff < 0).float()) * diff**2)
 
     def update_v(
         self,
@@ -108,7 +107,6 @@ class IQLAgent(AWACAgent):
         vs = self.value_critic(observations)
         with torch.no_grad():
             target_values = torch.gather(self.target_critic(observations), 1, actions.unsqueeze(-1))
-            assert target_values.shape == vs.shape, vs.shape
         # TODO(student): Update V(s) using the loss from the IQL paper
         loss = IQLAgent.iql_expectile_loss(self.expectile, vs, target_values)
 
