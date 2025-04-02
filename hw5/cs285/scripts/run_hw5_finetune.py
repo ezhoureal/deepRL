@@ -23,7 +23,6 @@ from run_hw5_explore import visualize
 
 MAX_NVIDEO = 2
 
-
 def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     # set random seeds
     np.random.seed(args.seed)
@@ -57,15 +56,39 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
     num_offline_steps = config["offline_steps"]
     num_online_steps = config["total_steps"] - num_offline_steps
+    epsilon = None
 
+    with open(os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl"), "rb") as f:
+        dataset = pickle.load(f)
     for step in tqdm.trange(config["total_steps"], dynamic_ncols=True):
         # TODO(student): Borrow code from another online training script here. Only run the online training loop after `num_offline_steps` steps.
+        if step > num_offline_steps:
+            if exploration_schedule is not None:
+                epsilon = exploration_schedule.value(step)
+                action = agent.get_action(observation, epsilon)
+            else:
+                epsilon = None
+                action = agent.get_action(observation)
+            next_observation, reward, done, info = env.step(action)
+            next_observation = np.asarray(next_observation)
+            truncated = info.get("TimeLimit.truncated", False)
+            replay_buffer.insert(observation, action, reward, next_observation, done and not truncated)
+            recent_observations.append(observation)
+            if done:
+                observation = env.reset()
+            else:
+                observation = next_observation
 
-        # Main training loop
-        batch = replay_buffer.sample(config["batch_size"])
+            # Main training loop
+            batch = replay_buffer.sample(config["batch_size"])
 
-        # Convert to PyTorch tensors
-        batch = ptu.from_numpy(batch)
+            # Convert to PyTorch tensors
+            batch = ptu.from_numpy(batch)
+        else:
+            batch = dataset.sample(config["batch_size"])
+            batch = {
+                k: ptu.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in batch.items()
+            }
 
         update_info = agent.update(
             batch["observations"],
@@ -107,7 +130,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
                 logger.log_scalar(np.max(ep_lens), "eval/ep_len_max", step)
                 logger.log_scalar(np.min(ep_lens), "eval/ep_len_min", step)
 
-        if step % args.visualize_interval == 0:
+        if step > num_offline_steps and step % args.visualize_interval == 0:
             env_pointmass: Pointmass = env.unwrapped
             observations = np.stack(recent_observations)
             recent_observations = []
