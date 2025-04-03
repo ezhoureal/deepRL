@@ -49,7 +49,6 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
 
     # Replay buffer
     replay_buffer = ReplayBuffer(capacity=config["total_steps"])
-
     observation = env.reset()
 
     recent_observations = []
@@ -59,7 +58,9 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     epsilon = None
 
     with open(os.path.join(args.dataset_dir, f"{config['dataset_name']}.pkl"), "rb") as f:
-        dataset = pickle.load(f)
+        replay_buffer: ReplayBuffer = pickle.load(f)
+        print(f'buffer capacity = {replay_buffer.max_size}, offline data size = {replay_buffer.size}')
+
     for step in tqdm.trange(config["total_steps"], dynamic_ncols=True):
         # TODO(student): Borrow code from another online training script here. Only run the online training loop after `num_offline_steps` steps.
         if step > num_offline_steps:
@@ -79,16 +80,11 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
             else:
                 observation = next_observation
 
-            # Main training loop
-            batch = replay_buffer.sample(config["batch_size"])
+        # Main training loop
+        batch = replay_buffer.sample(config["batch_size"])
 
-            # Convert to PyTorch tensors
-            batch = ptu.from_numpy(batch)
-        else:
-            batch = dataset.sample(config["batch_size"])
-            batch = {
-                k: ptu.from_numpy(v) if isinstance(v, np.ndarray) else v for k, v in batch.items()
-            }
+        # Convert to PyTorch tensors
+        batch = ptu.from_numpy(batch)
 
         update_info = agent.update(
             batch["observations"],
