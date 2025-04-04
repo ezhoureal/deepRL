@@ -416,7 +416,7 @@ class Pointmass(gym.Env):
 
         dist = np.linalg.norm(self.state - self.fixed_goal)
         done = (dist < self.epsilon) or (self.timesteps_left == 0)
-        if done and dist < self.epsilon:
+        if dist < self.epsilon:
             print(f'reached, dist = {dist}')
         ns = self._normalize_obs(self.state.copy())
 
