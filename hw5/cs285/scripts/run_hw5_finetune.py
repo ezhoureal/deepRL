@@ -48,7 +48,6 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
     observation = None
 
     # Replay buffer
-    replay_buffer = ReplayBuffer(capacity=config["total_steps"])
     observation = env.reset()
 
     recent_observations = []
@@ -89,7 +88,7 @@ def run_training_loop(config: dict, logger: Logger, args: argparse.Namespace):
         update_info = agent.update(
             batch["observations"],
             batch["actions"],
-            batch["rewards"] * (1 if config.get("use_reward", False) else 0),
+            batch["rewards"],
             batch["next_observations"],
             batch["dones"],
             step,
